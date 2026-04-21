@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survival Násobilka - Moderní UI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #2c3e50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            transition: background-color 0.3s;
+        }
+
+        #back-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            text-decoration: none;
+            background-color: #7f8c8d;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 100;
+        }
+
+        #selector-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .num-btn {
+            padding: 10px 14px;
+            background-color: #34495e;
+            border: 2px solid #7f8c8d;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .num-btn.active {
+            background-color: #3498db;
+            border-color: white;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.8);
+        }
+
+        #controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .control-btn {
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            color: white;
+        }
+
+        #btn-start { background-color: #27ae60; }
+        #btn-stop { background-color: #c0392b; }
+        .control-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        #ui-layer { text-align: center; width: 100%; max-width: 600px; }
+        #timer { font-size: 4rem; font-weight: bold; color: #f1c40f; line-height: 1; margin: 10px 0; }
+        
+        #game-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 25px; 
+            margin-top: 20px; 
+            padding: 0 20px;
+        }
+        .hidden-grid { display: none !important; }
+
+        .column { display: flex; flex-direction: column; gap: 15px; }
+
+        .card {
+            padding: 20px;
+            background-color: #34495e;
+            border: 3px solid #ecf0f1;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 1.8rem;
+            text-align: center;
+            user-select: none;
+            transition: transform 0.2s, background-color 0.2s;
+            min-width: 140px;
+        }
+
+        .card.selected { background-color: #3498db; border-color: #fff; transform: scale(1.05); }
+        .card.wrong { background-color: #e74c3c !important; border-color: #ff0000 !important; animation: shake-small 0.4s; }
+        .card.hidden { visibility: hidden; opacity: 0; pointer-events: none; }
+
+        /* --- STYLY PRO MODÁLNÍ OKNO --- */
+        #modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none; /* Skryto defaultně */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        #modal-box {
+            background: #ecf0f1;
+            color: #2c3e50;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            max-width: 80%;
+        }
+
+        #modal-box h2 { font-size: 2.5rem; margin-top: 0; }
+        #modal-box p { font-size: 1.2rem; margin-bottom: 30px; }
+
+        .modal-btn {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .modal-btn:active { transform: scale(0.95); }
+        .modal-btn.restart-btn { background-color: #c0392b; }
+
+        @keyframes shake-small {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .shake-heavy { animation: shake-heavy 0.1s infinite; }
+        @keyframes shake-heavy {
+            0% { transform: translate(4px, 4px); }
+            50% { transform: translate(-4px, -4px); }
+            100% { transform: translate(4px, -4px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="modal-overlay">
+        <div id="modal-box">
+            <h2 id="modal-title">Výborně!</h2>
+            <p id="modal-text">Úroveň dokončena.</p>
+            <button id="modal-button" class="modal-btn" onclick="closeModal()">DALŠÍ ÚROVEŇ</button>
+        </div>
+    </div>
+
+    <a href="index.html" id="back-link">← ZPĚT</a>
+
+    <div id="selector-container"></div>
+
+    <div id="controls">
+        <button id="btn-start" class="control-btn" onclick="startGame()">START</button>
+        <button id="btn-stop" class="control-btn" onclick="stopGame()" disabled>STOP</button>
+    </div>
+
+    <div id="ui-layer">
+        <div id="level-info">Vyber násobilku a stiskni Start</div>
+        <div id="timer">30</div>
+        
+        <div id="game-grid" class="hidden-grid">
+            <div class="column" id="left-col"></div>
+            <div class="column" id="right-col"></div>
+        </div>
+    </div>
+
+    <script>
+        const VOL = 0.4; 
+        let currentMultiplier = 2;
+        let currentMaxTime = 30;
+        let timeLeft = 30;
+        let level = 1;
+        let matchesFound = 0;
+        let gameActive = false;
+        let isProcessing = false;
+        let selectedCards = [];
+        let timerInterval;
+        let modalAction = null; // Uchovává funkci, co se má stát po kliku na tlačítko v okně
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playTone(freq, type, duration, volMod = 1) {
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(VOL * volMod, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        const sounds = {
+            click: () => playTone(500, 'sine', 0.1, 0.3),
+            match: () => { playTone(800, 'sine', 0.2, 0.6); setTimeout(() => playTone(1200, 'sine', 0.3, 0.6), 60); },
+            error: () => playTone(120, 'sawtooth', 0.5, 0.5),
+            win: () => [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'triangle', 0.4, 0.5), i * 120))
+        };
+
+        // FUNKCE PRO ZOBRAZENÍ MODÁLU
+        function showModal(title, text, buttonLabel, isGameOver, action) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-text').textContent = text;
+            const btn = document.getElementById('modal-button');
+            btn.textContent = buttonLabel;
+            
+            if(isGameOver) btn.classList.add('restart-btn');
+            else btn.classList.remove('restart-btn');
+
+            document.getElementById('modal-overlay').style.display = 'flex';
+            modalAction = action;
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            if (modalAction) modalAction();
+        }
+
+        const selector = document.getElementById('selector-container');
+        for (let i = 2; i <= 10; i++) {
+            const btn = document.createElement('button');
+            btn.className = `num-btn ${i === 2 ? 'active' : ''}`;
+            btn.textContent = i;
+            btn.onclick = () => {
+                stopGame();
+                document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMultiplier = i;
+                document.getElementById('level-info').textContent = `Násobilka ${currentMultiplier} připravena.`;
+            };
+            selector.appendChild(btn);
+        }
+
+        function startGame() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            document.getElementById('btn-start').disabled = true;
+            document.getElementById('btn-stop').disabled = false;
+            document.getElementById('game-grid').classList.remove('hidden-grid');
+            initLevel();
+        }
+
+        function stopGame() {
+            gameActive = false;
+            isProcessing = false;
+            clearInterval(timerInterval);
+            level = 1; currentMaxTime = 30; timeLeft = 30;
+            selectedCards = [];
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-stop').disabled = true;
+            document.getElementById('game-grid').classList.add('hidden-grid');
+            document.getElementById('timer').textContent = "30";
+            document.getElementById('timer').style.color = "#f1c40f";
+            document.getElementById('level-info').textContent = "Hra zastavena.";
+            document.body.className = '';
+            document.body.style.backgroundColor = "#2c3e50";
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        function initLevel() {
+            gameActive = true;
+            isProcessing = false;
+            matchesFound = 0;
+            selectedCards = [];
+            timeLeft = currentMaxTime;
+            document.getElementById('timer').textContent = timeLeft;
+            document.getElementById('timer').style.color = "#f1c40f";
+            document.getElementById('level-info').textContent = `Násobilka ${currentMultiplier} | Úroveň: ${level}`;
+            
+            const leftCol = document.getElementById('left-col');
+            const rightCol = document.getElementById('right-col');
+            leftCol.innerHTML = ''; rightCol.innerHTML = '';
+
+            const indices = Array.from({length: 10}, (_, i) => i + 1).sort(() => 0.5 - Math.random()).slice(0, 5);
+            const qs = indices.map(i => ({t: `${currentMultiplier} × ${i}`, m: (currentMultiplier * i).toString()}));
+            const as = indices.map(i => ({t: (currentMultiplier * i).toString(), m: `${currentMultiplier} × ${i}`}));
+
+            qs.sort(() => 0.5 - Math.random()).forEach(d => leftCol.appendChild(createCard(d)));
+            as.sort(() => 0.5 - Math.random()).forEach(d => rightCol.appendChild(createCard(d)));
+
+            clearInterval(timerInterval);
+            startTimer();
+        }
+
+        function createCard(data) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.textContent = data.t;
+            card.dataset.val = data.t.trim();
+            card.dataset.match = data.m.trim();
+            card.onclick = () => {
+                if (!gameActive || isProcessing || card.classList.contains('selected') || card.classList.contains('hidden')) return;
+                sounds.click();
+                card.classList.add('selected');
+                selectedCards.push(card);
+                if (selectedCards.length === 2) {
+                    isProcessing = true;
+                    checkMatch();
+                }
+            };
+            return card;
+        }
+
+        function checkMatch() {
+            const [c1, c2] = selectedCards;
+            const isMatch = (c1.dataset.match === c2.dataset.val || c2.dataset.match === c1.dataset.val);
+
+            if (isMatch) {
+                sounds.match();
+                c1.classList.add('hidden'); c2.classList.add('hidden');
+                c1.classList.remove('selected'); c2.classList.remove('selected');
+                matchesFound++;
+                selectedCards = [];
+                isProcessing = false;
+                if (matchesFound === 5) setTimeout(handleWin, 200);
+            } else {
+                sounds.error();
+                c1.classList.add('wrong'); c2.classList.add('wrong');
+                setTimeout(() => {
+                    c1.classList.remove('wrong', 'selected');
+                    c2.classList.remove('wrong', 'selected');
+                    selectedCards = [];
+                    isProcessing = false;
+                }, 400);
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (!gameActive) return;
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                if (timeLeft <= 5) document.getElementById('timer').style.color = "#e74c3c";
+                if (timeLeft <= 0) handleLose();
+            }, 1000);
+        }
+
+        function handleWin() {
+            if (!gameActive) return;
+            gameActive = false;
+            clearInterval(timerInterval);
+            sounds.win();
+            
+            showModal(
+                "VÝBORNĚ!", 
+                `Úroveň ${level} dokončena! Časový limit pro další kolo se zkracuje.`, 
+                "DALŠÍ ÚROVEŇ", 
+                false, 
+                () => {
+                    level++;
+                    currentMaxTime = Math.max(5, currentMaxTime - 5);
+                    initLevel();
+                }
+            );
+        }
+
+        function handleLose() {
+		
+            gameActive = false;
+            clearInterval(timerInterval);
+            // document.body.classList.add('shake-heavy');
+            document.body.style.backgroundColor = "#c0392b";
+
+            document.querySelectorAll('.card:not(.hidden)').forEach(card => {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                card.style.transform = `translate(${x}px, ${y}px) rotate(${Math.random()*1000}deg)`;
+                card.style.opacity = "0";
+            });
+
+            setTimeout(() => {
+                showModal(
+                    "Čas vypršel!", 
+                    `Dosáhl jsi úrovně ${level}.`, 
+                    "HRÁT ZNOVU", 
+                    true, 
+                    stopGame
+                );
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
