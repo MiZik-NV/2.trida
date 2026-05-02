@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trénink Násobilky - Grid Edition</title>
+	<link rel="stylesheet" href="styl.css">
+</head>
+<body>
+
+    <div id="settings-panel">
+        <h2 style="margin-top: 0;">Konfigurace násobilky</h2>
+        <div id="selector-container"></div>
+        
+        <div class="timer-config">
+            <label>
+                <input type="checkbox" id="timer-enable" checked> Zapnout časový limit
+            </label>
+            <div id="slider-box" style="margin-top:15px;">
+                <div style="font-weight: bold; margin-bottom: 5px;">Rychlost: <span id="sec-val">5</span>s</div>
+                <input type="range" id="timer-slider" min="2" max="15" value="5">
+            </div>
+        </div>
+
+        <button class="control-btn" onclick="startGame()">SPUSTIT TRÉNINK</button>
+    </div>
+
+    <div id="game-area">
+        <div id="timer-bar-container"><div id="timer-bar"></div></div>
+        <div id="question-box">? × ?</div>
+        <div id="answers-grid"></div>
+        <button id="btn-stop" class="control-btn" onclick="stopGame()">UKONČIT</button>
+    </div>
+
+    <script>
+        let selectedMultipliers = new Set([2]);
+        let gameActive = false;
+        let isProcessing = false;
+        let correctAnswer = 0;
+        let timerLimit = 5;
+        let timerCurrent = 0;
+        let timerInterval;
+		const VOL = 0.2; // Celková hlasitost
+		const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+		function playTone(freq, type, duration, volMod = 1) {
+			try {
+				const osc = audioCtx.createOscillator();
+				const gain = audioCtx.createGain();
+				osc.type = type;
+				osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+				gain.gain.setValueAtTime(VOL * volMod, audioCtx.currentTime);
+				gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+				osc.connect(gain); gain.connect(audioCtx.destination);
+				osc.start(); osc.stop(audioCtx.currentTime + duration);
+			} catch(e) {}
+		}
+
+		const sounds = {
+			correct: () => playTone(800, 'sine', 0.2, 0.5),   // Jemné pípnutí pro úspěch
+			wrong: () => playTone(150, 'sawtooth', 0.4, 0.8), // Hluboký bzučák pro chybu
+			tick: () => playTone(400, 'sine', 0.05, 0.2),    // Tiknutí při vypršení času
+			start: () => [440, 554, 659].forEach((f, i) => setTimeout(() => playTone(f, 'triangle', 0.4, 0.3), i * 100))
+		};
+
+        // Inicializace výběru čísel (vícenásobný výběr)
+        const selector = document.getElementById('selector-container');
+        for (let i = 2; i <= 10; i++) {
+            const btn = document.createElement('button');
+            btn.className = `num-btn ${i === 2 ? 'active' : ''}`;
+            btn.textContent = i;
+            btn.onclick = () => {
+                if (selectedMultipliers.has(i)) {
+                    if (selectedMultipliers.size > 1) {
+                        selectedMultipliers.delete(i);
+                        btn.classList.remove('active');
+                    }
+                } else {
+                    selectedMultipliers.add(i);
+                    btn.classList.add('active');
+                }
+            };
+            selector.appendChild(btn);
+        }
+
+        // Ovládání slideru
+        const slider = document.getElementById('timer-slider');
+        const secVal = document.getElementById('sec-val');
+        slider.oninput = () => {
+            secVal.textContent = slider.value;
+            timerLimit = parseInt(slider.value);
+        };
+
+        const timerEnable = document.getElementById('timer-enable');
+        timerEnable.onchange = () => {
+            document.getElementById('slider-box').style.opacity = timerEnable.checked ? "1" : "0.3";
+            document.getElementById('timer-bar-container').style.visibility = timerEnable.checked ? "visible" : "hidden";
+        };
+
+        function startGame() {
+			if (audioCtx.state === 'suspended') audioCtx.resume();
+			sounds.start();
+            document.getElementById('settings-panel').classList.add('hidden');
+            document.getElementById('game-area').style.display = 'block';
+            gameActive = true;
+            nextQuestion();
+        }
+
+        function stopGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            document.getElementById('settings-panel').classList.remove('hidden');
+            document.getElementById('game-area').style.display = 'none';
+            document.body.style.backgroundColor = "#2c3e50";
+        }
+
+        function nextQuestion() {
+            if (!gameActive) return;
+            isProcessing = false;
+            document.body.style.backgroundColor = "#2c3e50";
+            
+            const multis = Array.from(selectedMultipliers);
+            const m = multis[Math.floor(Math.random() * multis.length)];
+            const n = Math.floor(Math.random() * 10) + 1;
+            
+            correctAnswer = m * n;
+            document.getElementById('question-box').textContent = `${m} × ${n}`;
+
+            // Generování chytrých odpovědí
+            let opts = new Set([correctAnswer]);
+            while(opts.size < 5) {
+                // Mix odpovědí: blízké výsledky, jiný násobek stejné řady, nebo náhodné číslo
+                let strategy = Math.random();
+                let fake;
+                if (strategy < 0.4) fake = correctAnswer + (Math.random() > 0.5 ? m : -m);
+                else if (strategy < 0.7) fake = correctAnswer + (Math.random() > 0.5 ? 1 : -1);
+                else fake = m * (Math.floor(Math.random() * 10) + 1);
+                
+                if (fake > 0 && fake !== correctAnswer) opts.add(fake);
+            }
+
+            const grid = document.getElementById('answers-grid');
+            grid.innerHTML = '';
+            Array.from(opts).sort(() => 0.5 - Math.random()).forEach(o => {
+                const b = document.createElement('button');
+                b.className = 'answer-btn';
+                b.textContent = o;
+                b.onclick = () => check(o, b);
+                grid.appendChild(b);
+            });
+
+            if (timerEnable.checked) startQuestionTimer();
+        }
+
+        function startQuestionTimer() {
+            clearInterval(timerInterval);
+            timerCurrent = 100;
+            const step = 100 / (timerLimit * 10);
+            
+            timerInterval = setInterval(() => {
+                timerCurrent -= step;
+                document.getElementById('timer-bar').style.width = timerCurrent + "%";
+                
+                if (timerCurrent <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeout();
+                }
+            }, 100);
+        }
+
+        function check(val, btn) {
+            if (isProcessing) return;
+            isProcessing = true;
+            clearInterval(timerInterval);
+
+            if (val === correctAnswer) {
+				sounds.correct();
+                btn.classList.add('correct');
+                setTimeout(nextQuestion, 500);
+            } else {
+				sounds.wrong();
+                btn.classList.add('wrong');
+                setTimeout(() => {
+                    btn.classList.remove('wrong');
+                    isProcessing = false;
+                    if (timerEnable.checked) startQuestionTimer();
+                }, 800);
+            }
+        }
+
+        function handleTimeout() {
+			sounds.wrong();
+            document.body.style.backgroundColor = "#c0392b";
+            setTimeout(nextQuestion, 600);
+        }
+    </script>
+</body>
+</html>

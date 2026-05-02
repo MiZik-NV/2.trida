@@ -1,0 +1,193 @@
+  :root {
+            --bg-color: #2c3e50;
+            --card-color: #34495e;
+            --accent-color: #3498db;
+            --answer-color: #f39c12; /* Výrazná oranžová pro odpovědi */
+            --correct-color: #27ae60;
+            --wrong-color: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+		/* Vzhled textu u přepínače časového limitu */
+		label {
+			cursor: pointer;
+			font-size: 1.2rem;       /* Velikost písma */
+			font-weight: 600;        /* Tloušťka písma (400 je normální, 700 tučné) */
+			color: #71c40f;          /* Barva textu (nyní žlutá pro odlišení) */
+			display: flex;           /* Zarovnání ikonky a textu do roviny */
+			align-items: center;
+			justify-content: center;
+			gap: 10px;               /* Mezera mezi čtverečkem a textem */
+			transition: color 0.3s;
+		}
+		/* Efekt při najetí myší na text */
+		label:hover {
+			color: #ffffff;          /* Text při najetí zbělá */
+		}
+
+        /* Nastavení */
+        #settings-panel {
+            background: rgba(0,0,0,0.25);
+            padding: 25px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #selector-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .num-btn {
+            padding: 12px 18px;
+            background-color: var(--card-color);
+            border: 2px solid #7f8c8d;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+
+        .num-btn.active {
+            background-color: var(--accent-color);
+            border-color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+        }
+
+        .timer-config {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+        }
+
+        /* Herní plocha */
+        #game-area {
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+            display: none;
+        }
+
+        #question-box {
+            font-size: 5rem;
+            font-weight: 800;
+            margin: 10px 0 20px 0;
+            padding: 20px;
+            text-shadow: 2px 4px 10px rgba(0,0,0,0.3);
+        }
+
+        #timer-bar-container {
+            width: 100%;
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        #timer-bar {
+            width: 100%;
+            height: 100%;
+            background: #f1c40f;
+            transition: width 0.1s linear;
+        }
+
+        /* Mřížka odpovědí - VEDLE SEBE */
+        #answers-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* 5 vedle sebe na desktopu */
+            gap: 15px;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            #answers-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 480px) {
+            #answers-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .answer-btn {
+            background-color: var(--answer-color);
+            border: none;
+            padding: 25px 10px;
+            font-size: 2rem;
+            color: #2c3e50; /* Tmavé písmo na světlém tlačítku */
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: 800;
+            transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 6px 0 #d35400; /* 3D efekt */
+            position: relative;
+        }
+
+        .answer-btn:hover {
+            background-color: #ffb133;
+            transform: translateY(-2px);
+        }
+
+        .answer-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #d35400;
+        }
+
+        .answer-btn.correct { 
+            background-color: var(--correct-color) !important; 
+            color: white;
+            box-shadow: 0 4px 0 #1e8449;
+        }
+        
+        .answer-btn.wrong { 
+            background-color: var(--wrong-color) !important; 
+            color: white;
+            box-shadow: 0 4px 0 #922b21;
+            animation: shake 0.4s; 
+        }
+
+        .control-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 18px 45px;
+            font-size: 1.3rem;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        #btn-stop { background: #c0392b; margin-top: 40px; box-shadow: 0 4px 15px rgba(192, 57, 43, 0.3); }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        input[type=range] { width: 80%; max-width: 300px; margin: 10px 0; }
+        .hidden { display: none !important; }
+        
+        label { cursor: pointer; font-size: 1.1rem; }
